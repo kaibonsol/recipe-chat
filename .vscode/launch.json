@@ -10,6 +10,19 @@
 			"cwd": "${workspaceFolder}",
 			"console": "integratedTerminal",
 			"skipFiles": ["<node_internals>/**"]
+		},
+		{
+			"type": "chrome",
+			"request": "launch",
+			"name": "Open Browser",
+			"url": "http://localhost:5173",
+			"webRoot": "${workspaceFolder}"
+		}
+	],
+	"compounds": [
+		{
+			"name": "Dev Server + Browser",
+			"configurations": ["Run npm dev", "Open Browser"]
 		}
 	]
 }
