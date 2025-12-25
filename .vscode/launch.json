@@ -4,10 +4,20 @@
 		{
 			"type": "node",
 			"request": "launch",
-			"name": "Run npm dev",
+			"name": "Run Client",
 			"runtimeExecutable": "npm",
 			"runtimeArgs": ["run", "dev"],
 			"cwd": "${workspaceFolder}",
+			"console": "integratedTerminal",
+			"skipFiles": ["<node_internals>/**"]
+		},
+		{
+			"type": "node",
+			"request": "launch",
+			"name": "Run API Server",
+			"runtimeExecutable": "npm",
+			"runtimeArgs": ["run", "dev"],
+			"cwd": "${workspaceFolder}/api",
 			"console": "integratedTerminal",
 			"skipFiles": ["<node_internals>/**"]
 		},
