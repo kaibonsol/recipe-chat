@@ -40,175 +40,6 @@ type ListEntry = {
 
 type LeftTab = "history" | "favorites";
 
-const recipes: RecipePlan[] = [
-	{
-		id: "charred-harissa-salmon",
-		title: "Charred Citrus Harissa Salmon",
-		summary:
-			"Smoky sheet-pan salmon glossed with blood orange and harissa glaze, finished with crisp fennel.",
-		readyIn: "45 min • serves 2",
-		tags: ["high protein", "sheet pan", "gluten free"],
-		ingredients: [
-			{
-				id: "salmon",
-				label: "Salmon fillets",
-				amount: "2 (5 oz)",
-				futureSteps: [1, 2, 4],
-				note: "Pat dry for crisp edges",
-			},
-			{
-				id: "citrus",
-				label: "Blood oranges",
-				amount: "2, juiced",
-				futureSteps: [0, 1],
-				note: "Reserve zest",
-			},
-			{
-				id: "fennel",
-				label: "Fennel bulb",
-				amount: "1, shaved",
-				futureSteps: [3],
-				note: "Toss with citrus oil",
-			},
-			{
-				id: "yogurt",
-				label: "Skyr or Greek yogurt",
-				amount: "1/2 cup",
-				futureSteps: [4],
-				note: "Fold in herbs",
-			},
-		],
-		steps: [
-			{
-				id: "step-1",
-				label: "Whisk citrus, harissa, and honey into a sticky glaze.",
-				tip: "Set aside 2 tbsp for finishing.",
-			},
-			{
-				id: "step-2",
-				label: "Brush salmon, roast at 425°F until caramelized.",
-				duration: "12 min",
-			},
-			{
-				id: "step-3",
-				label: "Toss fennel, herbs, and citrus oil for a quick salad.",
-			},
-			{
-				id: "step-4",
-				label: "Swirl reserved glaze into yogurt for serving.",
-			},
-			{
-				id: "step-5",
-				label: "Plate salmon over fennel salad and spoon citrus yogurt on top.",
-			},
-		],
-	},
-	{
-		id: "porcini-orzo",
-		title: "Porcini Butter Orzo",
-		summary:
-			"Silky orzo risotto with roasted mushrooms, parmesan broth, and herb oil finish.",
-		readyIn: "35 min • serves 3",
-		tags: ["comfort", "vegetarian", "one pot"],
-		ingredients: [
-			{
-				id: "orzo",
-				label: "Toasted orzo",
-				amount: "1 1/2 cups",
-				futureSteps: [1, 2],
-				note: "Stir frequently",
-			},
-			{
-				id: "mushrooms",
-				label: "Wild mushrooms",
-				amount: "12 oz",
-				futureSteps: [0, 3],
-				note: "Roast until crisp",
-			},
-			{
-				id: "porcini",
-				label: "Porcini broth",
-				amount: "3 cups warm",
-				futureSteps: [1],
-				note: "Ladle gradually",
-			},
-			{
-				id: "butter",
-				label: "Brown butter",
-				amount: "3 tbsp",
-				futureSteps: [2],
-				note: "Finish off heat",
-			},
-		],
-		steps: [
-			{
-				id: "porcini-step-1",
-				label: "Roast mushrooms with thyme until concentrated.",
-			},
-			{
-				id: "porcini-step-2",
-				label: "Toast orzo, then ladle in porcini broth like risotto.",
-			},
-			{
-				id: "porcini-step-3",
-				label: "Emulsify with brown butter and parmesan.",
-			},
-			{
-				id: "porcini-step-4",
-				label: "Fold in mushrooms and drizzle herb oil.",
-			},
-		],
-	},
-	{
-		id: "saffron-ramen",
-		title: "Saffron Coconut Ramen",
-		summary: "Velvety coconut broth with chili crisp veggies and jammy eggs.",
-		readyIn: "30 min • serves 2",
-		tags: ["spicy", "brothy", "weeknight"],
-		ingredients: [
-			{
-				id: "stock",
-				label: "Coconut stock",
-				amount: "4 cups",
-				futureSteps: [0, 1],
-				note: "Simmer with saffron",
-			},
-			{
-				id: "noodles",
-				label: "Fresh ramen",
-				amount: "14 oz",
-				futureSteps: [2],
-				note: "Cook separately",
-			},
-			{
-				id: "veg",
-				label: "Charred snap peas",
-				amount: "1 cup",
-				futureSteps: [3],
-				note: "Finish with chili crisp",
-			},
-		],
-		steps: [
-			{
-				id: "ramen-step-1",
-				label: "Bloom saffron in coconut milk with lemongrass.",
-			},
-			{
-				id: "ramen-step-2",
-				label: "Simmer broth with aromatics until plush.",
-			},
-			{
-				id: "ramen-step-3",
-				label: "Cook ramen and toss with sesame oil.",
-			},
-			{
-				id: "ramen-step-4",
-				label: "Layer bowls: noodles, veg, pour broth, top with chili crisp.",
-			},
-		],
-	},
-];
-
 const promptSuggestions = [
 	"Smoky vegan stew for two",
 	"High-protein meal prep with salmon",
@@ -219,15 +50,15 @@ function App(): ReactElement {
 	const [viewMode, setViewMode] = useState<"idle" | "active">("idle");
 	const [prompt, setPrompt] = useState<string>("");
 	const [activeTab, setActiveTab] = useState<LeftTab>("history");
-	const [selectedRecipeId, setSelectedRecipeId] = useState<string>(
-		recipes[0].id
-	);
+	const [recipes, setRecipes] = useState<RecipePlan[]>([]);
+	const [selectedRecipeId, setSelectedRecipeId] = useState<string | null>(null);
 	const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
 	const [hoveredIngredientId, setHoveredIngredientId] = useState<string | null>(
 		null
 	);
 	const [toast, setToast] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState<boolean>(false);
+	const [isGenerating, setIsGenerating] = useState<boolean>(false);
 	const [history, setHistory] = useState<ListEntry[]>([]);
 	const [favorites, setFavorites] = useState<ListEntry[]>([]);
 	const [chatInput, setChatInput] = useState<string>("");
@@ -242,15 +73,25 @@ function App(): ReactElement {
 
 	const accountMenuRef = useRef<HTMLDivElement | null>(null);
 
-	const selectedRecipe = useMemo(() => {
+	const selectedRecipe = useMemo<RecipePlan | null>(() => {
+		if (recipes.length === 0) {
+			return null;
+		}
+		if (!selectedRecipeId) {
+			return recipes[0];
+		}
 		return (
 			recipes.find((recipe) => recipe.id === selectedRecipeId) ?? recipes[0]
 		);
-	}, [selectedRecipeId]);
+	}, [recipes, selectedRecipeId]);
 
 	useEffect(() => {
+		if (!selectedRecipe) {
+			setCurrentStepIndex(0);
+			return;
+		}
 		setCurrentStepIndex(0);
-	}, [selectedRecipeId]);
+	}, [selectedRecipe]);
 
 	useEffect(() => {
 		const handleClickAway = (event: MouseEvent) => {
@@ -281,6 +122,81 @@ function App(): ReactElement {
 		}, 2200);
 	}, []);
 
+	const requestRecipePlan = useCallback(
+		async (promptText: string): Promise<RecipePlan> => {
+			const configuredBase = (
+				import.meta.env.VITE_API_BASE_URL as string | undefined
+			)?.replace(/\/$/, "");
+			const basePath = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+			const apiUrl = configuredBase
+				? `${configuredBase}/api/recipes`
+				: basePath
+				? `${basePath}/api/recipes`
+				: "/api/recipes";
+			const response = await fetch(apiUrl, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({ prompt: promptText }),
+			});
+			if (!response.ok) {
+				const errorText = await response.text().catch(() => "");
+				throw new Error(`Recipe API error ${response.status}: ${errorText}`);
+			}
+			const data = (await response.json()) as { recipe?: RecipePlan };
+			if (!data.recipe) {
+				throw new Error("Recipe payload missing");
+			}
+			return data.recipe;
+		},
+		[]
+	);
+
+	const generateRecipeFromPrompt = useCallback(
+		async (input: string, options?: { trackHistory?: boolean }) => {
+			const trimmed = input.trim();
+			if (!trimmed) {
+				return null;
+			}
+			setIsGenerating(true);
+			try {
+				const recipe = await requestRecipePlan(trimmed);
+				setRecipes((prev) => {
+					const filtered = prev.filter((entry) => entry.id !== recipe.id);
+					return [recipe, ...filtered];
+				});
+				setSelectedRecipeId(recipe.id);
+				setViewMode("active");
+				setHoveredIngredientId(null);
+				if (options?.trackHistory ?? true) {
+					setHistory((prev) => {
+						const remaining = prev.filter(
+							(entry) => entry.recipeId !== recipe.id
+						);
+						const newEntry: ListEntry = {
+							id: makeId("hist"),
+							recipeId: recipe.id,
+							title: recipe.title,
+							summary: trimmed,
+							timeLabel: "Just now",
+							tags: recipe.tags.slice(0, 2),
+						};
+						return [newEntry, ...remaining];
+					});
+				}
+				return recipe;
+			} catch (error) {
+				console.error(error);
+				showToast("Unable to generate recipe");
+				return null;
+			} finally {
+				setIsGenerating(false);
+			}
+		},
+		[requestRecipePlan, showToast]
+	);
+
 	const {
 		conversation,
 		status: chatStatus,
@@ -292,17 +208,13 @@ function App(): ReactElement {
 		onError: showToast,
 	});
 
-	const handlePromptSubmit = (event: FormEvent<HTMLFormElement>) => {
+	const handlePromptSubmit = async (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
-		if (!prompt.trim()) {
+		if (!prompt.trim() || isGenerating) {
 			return;
 		}
-		const lowered = prompt.toLowerCase();
-		const matchedRecipe = recipes.find((recipe) =>
-			lowered.includes(recipe.title.toLowerCase().split(" ")[0])
-		);
-		const targetRecipe = matchedRecipe ?? recipes[0];
-		handleSelectRecipe(targetRecipe.id, prompt, { trackHistory: true });
+		await generateRecipeFromPrompt(prompt, { trackHistory: true });
+		setPrompt("");
 	};
 
 	type SelectOptions = {
@@ -314,8 +226,11 @@ function App(): ReactElement {
 		userMessage?: string,
 		options?: SelectOptions
 	) => {
-		const nextRecipe =
-			recipes.find((recipe) => recipe.id === recipeId) ?? recipes[0];
+		const nextRecipe = recipes.find((recipe) => recipe.id === recipeId);
+		if (!nextRecipe) {
+			showToast("Recipe unavailable");
+			return;
+		}
 		setSelectedRecipeId(nextRecipe.id);
 		setViewMode("active");
 		setHoveredIngredientId(null);
@@ -352,17 +267,20 @@ function App(): ReactElement {
 	};
 
 	const handleCopyPlan = async () => {
+		const recipeToCopy = selectedRecipe;
+		if (!recipeToCopy) {
+			showToast("No recipe to copy");
+			return;
+		}
 		const compiled = [
-			selectedRecipe.title,
-			selectedRecipe.summary,
+			recipeToCopy.title,
+			recipeToCopy.summary,
 			"Ingredients:",
-			...selectedRecipe.ingredients.map(
+			...recipeToCopy.ingredients.map(
 				(ingredient) => `- ${ingredient.amount} ${ingredient.label}`
 			),
 			"Steps:",
-			...selectedRecipe.steps.map(
-				(step, index) => `${index + 1}. ${step.label}`
-			),
+			...recipeToCopy.steps.map((step, index) => `${index + 1}. ${step.label}`),
 		].join("\n");
 		try {
 			await navigator.clipboard.writeText(compiled);
@@ -373,12 +291,17 @@ function App(): ReactElement {
 	};
 
 	const handleSavePlan = () => {
+		const recipeToSave = selectedRecipe;
+		if (!recipeToSave) {
+			showToast("No recipe to save");
+			return;
+		}
 		setIsSaving(true);
 		window.setTimeout(() => {
 			setIsSaving(false);
 			setFavorites((prev) => {
 				const alreadySaved = prev.some(
-					(entry) => entry.recipeId === selectedRecipe.id
+					(entry) => entry.recipeId === recipeToSave.id
 				);
 				if (alreadySaved) {
 					showToast("Already in favorites");
@@ -386,11 +309,11 @@ function App(): ReactElement {
 				}
 				const newEntry: ListEntry = {
 					id: makeId("fav"),
-					recipeId: selectedRecipe.id,
-					title: selectedRecipe.title,
-					summary: selectedRecipe.summary,
+					recipeId: recipeToSave.id,
+					title: recipeToSave.title,
+					summary: recipeToSave.summary,
 					timeLabel: "Just now",
-					tags: selectedRecipe.tags.slice(0, 2),
+					tags: recipeToSave.tags.slice(0, 2),
 				};
 				showToast("Added to favorites");
 				return [newEntry, ...prev];
@@ -418,6 +341,9 @@ function App(): ReactElement {
 	};
 
 	const goToStep = (delta: number) => {
+		if (!selectedRecipe) {
+			return;
+		}
 		setCurrentStepIndex((prev) => {
 			const next = prev + delta;
 			if (next < 0) {
@@ -502,42 +428,6 @@ function App(): ReactElement {
 						</button>
 					</div>
 				</header>
-				<ul className="story-list">
-					{listEntries.length === 0 ? (
-						<li className="empty-state">
-							Start a conversation to populate this list.
-						</li>
-					) : (
-						listEntries.map((entry) => (
-							<li key={entry.id}>
-								<button
-									type="button"
-									className={`story-card ${
-										selectedRecipeId === entry.recipeId ? "is-selected" : ""
-									}`}
-									onClick={() =>
-										handleSelectRecipe(
-											entry.recipeId,
-											`Can we revisit ${entry.title}?`,
-											{ trackHistory: false }
-										)
-									}
-								>
-									<div className="story-title-row">
-										<span>{entry.title}</span>
-										<time>{entry.timeLabel}</time>
-									</div>
-									<p>{entry.summary}</p>
-									<div className="story-tags">
-										{entry.tags.map((tag) => (
-											<span key={`${entry.id}-${tag}`}>{tag}</span>
-										))}
-									</div>
-								</button>
-							</li>
-						))
-					)}
-				</ul>
 			</aside>
 			<section className="panel main-panel">
 				{viewMode === "idle" ? (
@@ -555,7 +445,9 @@ function App(): ReactElement {
 								value={prompt}
 								onChange={(event) => setPrompt(event.target.value)}
 							/>
-							<button type="submit">Generate plan</button>
+							<button type="submit" disabled={isGenerating}>
+								{isGenerating ? "Generating…" : "Generate plan"}
+							</button>
 						</form>
 						<div className="prompt-suggestions">
 							{promptSuggestions.map((suggestion) => (
@@ -564,17 +456,18 @@ function App(): ReactElement {
 									type="button"
 									onClick={() => {
 										setPrompt(suggestion);
-										handleSelectRecipe(recipes[0].id, suggestion, {
+										void generateRecipeFromPrompt(suggestion, {
 											trackHistory: true,
 										});
 									}}
+									disabled={isGenerating}
 								>
 									{suggestion}
 								</button>
 							))}
 						</div>
 					</div>
-				) : (
+				) : selectedRecipe ? (
 					<div className="recipe-stage">
 						<header className="stage-head">
 							<div>
@@ -587,13 +480,17 @@ function App(): ReactElement {
 								role="toolbar"
 								aria-label="recipe actions"
 							>
-								<button type="button" onClick={handleCopyPlan}>
+								<button
+									type="button"
+									onClick={handleCopyPlan}
+									disabled={!selectedRecipe}
+								>
 									Copy
 								</button>
 								<button
 									type="button"
 									onClick={handleSavePlan}
-									disabled={isSaving}
+									disabled={!selectedRecipe || isSaving}
 								>
 									{isSaving ? "Saving…" : "Save"}
 								</button>
@@ -689,9 +586,13 @@ function App(): ReactElement {
 							</div>
 						</div>
 					</div>
+				) : (
+					<div className="recipe-stage empty">
+						<p className="muted">Generate a recipe to begin cooking.</p>
+					</div>
 				)}
 			</section>
-			{viewMode === "active" && (
+			{viewMode === "active" && selectedRecipe && (
 				<section className="panel tracker-panel">
 					<header>
 						<p className="eyebrow">Step tracker</p>
