@@ -31,8 +31,12 @@
 	],
 	"compounds": [
 		{
-			"name": "Dev Server + Browser",
-			"configurations": ["Run npm dev", "Open Browser"]
+			"name": "Run Client + Open Browser",
+			"configurations": ["Run Client", "Open Browser"]
+		},
+		{
+			"name": "Run API Server + Run Client + Open Browser",
+			"configurations": ["Run API Server", "Run Client", "Open Browser"]
 		}
 	]
 }

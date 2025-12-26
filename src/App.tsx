@@ -1,5 +1,7 @@
 import type { FormEvent, ReactElement } from "react";
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
+import ChatSidebar from "./ChatSidebar";
+import { useRoomSocket } from "./hooks/useRoomSocket";
 import "./App.scss";
 
 type Ingredient = {
@@ -38,18 +40,12 @@ type ListEntry = {
 
 type LeftTab = "history" | "favorites";
 
-type ChatMessage = {
-	id: string;
-	role: "user" | "assistant";
-	content: string;
-	timestamp: number;
-};
-
 const recipes: RecipePlan[] = [
 	{
 		id: "charred-harissa-salmon",
 		title: "Charred Citrus Harissa Salmon",
-		summary: "Smoky sheet-pan salmon glossed with blood orange and harissa glaze, finished with crisp fennel.",
+		summary:
+			"Smoky sheet-pan salmon glossed with blood orange and harissa glaze, finished with crisp fennel.",
 		readyIn: "45 min • serves 2",
 		tags: ["high protein", "sheet pan", "gluten free"],
 		ingredients: [
@@ -110,7 +106,8 @@ const recipes: RecipePlan[] = [
 	{
 		id: "porcini-orzo",
 		title: "Porcini Butter Orzo",
-		summary: "Silky orzo risotto with roasted mushrooms, parmesan broth, and herb oil finish.",
+		summary:
+			"Silky orzo risotto with roasted mushrooms, parmesan broth, and herb oil finish.",
 		readyIn: "35 min • serves 3",
 		tags: ["comfort", "vegetarian", "one pot"],
 		ingredients: [
@@ -222,21 +219,33 @@ function App(): ReactElement {
 	const [viewMode, setViewMode] = useState<"idle" | "active">("idle");
 	const [prompt, setPrompt] = useState<string>("");
 	const [activeTab, setActiveTab] = useState<LeftTab>("history");
-	const [selectedRecipeId, setSelectedRecipeId] = useState<string>(recipes[0].id);
+	const [selectedRecipeId, setSelectedRecipeId] = useState<string>(
+		recipes[0].id
+	);
 	const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
-	const [hoveredIngredientId, setHoveredIngredientId] = useState<string | null>(null);
+	const [hoveredIngredientId, setHoveredIngredientId] = useState<string | null>(
+		null
+	);
 	const [toast, setToast] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState<boolean>(false);
-	const [conversation, setConversation] = useState<ChatMessage[]>([]);
 	const [history, setHistory] = useState<ListEntry[]>([]);
 	const [favorites, setFavorites] = useState<ListEntry[]>([]);
 	const [chatInput, setChatInput] = useState<string>("");
 	const [isAccountMenuOpen, setIsAccountMenuOpen] = useState<boolean>(false);
+	const [roomId] = useState<string>(() => {
+		if (typeof window === "undefined") {
+			return "atelier-demo";
+		}
+		const params = new URLSearchParams(window.location.search);
+		return params.get("room") ?? "atelier-demo";
+	});
 
 	const accountMenuRef = useRef<HTMLDivElement | null>(null);
 
 	const selectedRecipe = useMemo(() => {
-		return recipes.find((recipe) => recipe.id === selectedRecipeId) ?? recipes[0];
+		return (
+			recipes.find((recipe) => recipe.id === selectedRecipeId) ?? recipes[0]
+		);
 	}, [selectedRecipeId]);
 
 	useEffect(() => {
@@ -245,7 +254,10 @@ function App(): ReactElement {
 
 	useEffect(() => {
 		const handleClickAway = (event: MouseEvent) => {
-			if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
+			if (
+				accountMenuRef.current &&
+				!accountMenuRef.current.contains(event.target as Node)
+			) {
 				setIsAccountMenuOpen(false);
 			}
 		};
@@ -257,39 +269,28 @@ function App(): ReactElement {
 		return activeTab === "history" ? history : favorites;
 	}, [activeTab, favorites, history]);
 
-	const makeId = (prefix: string) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+	const makeId = (prefix: string) =>
+		`${prefix}-${Date.now().toString(36)}-${Math.random()
+			.toString(36)
+			.slice(2, 6)}`;
 
-	const syncConversation = (userText: string | undefined, plan: RecipePlan, assistantOverride?: string) => {
-		const trimmedUser = userText?.trim();
-		const assistantCopy =
-			assistantOverride ?? `I'll guide you through ${plan.title}. Expect ${plan.steps.length} steps with highlights like ${plan.tags.slice(0, 2).join(" & ")}.`;
-		const updates: ChatMessage[] = [];
-		if (trimmedUser) {
-			updates.push({
-				id: makeId("user"),
-				role: "user",
-				content: trimmedUser,
-				timestamp: Date.now(),
-			});
-		}
-		updates.push({
-			id: makeId("assistant"),
-			role: "assistant",
-			content: assistantCopy,
-			timestamp: Date.now() + 1,
-		});
-		if (!updates.length) {
-			return;
-		}
-		setConversation((prev) => [...prev, ...updates]);
-	};
-
-	const showToast = (message: string) => {
+	const showToast = useCallback((message: string) => {
 		setToast(message);
 		window.setTimeout(() => {
 			setToast(null);
 		}, 2200);
-	};
+	}, []);
+
+	const {
+		conversation,
+		status: chatStatus,
+		sendUserMessage,
+		clearConversation,
+		reconnect: reconnectChat,
+	} = useRoomSocket(roomId, {
+		displayName: "Alex Gardner",
+		onError: showToast,
+	});
 
 	const handlePromptSubmit = (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
@@ -297,7 +298,9 @@ function App(): ReactElement {
 			return;
 		}
 		const lowered = prompt.toLowerCase();
-		const matchedRecipe = recipes.find((recipe) => lowered.includes(recipe.title.toLowerCase().split(" ")[0]));
+		const matchedRecipe = recipes.find((recipe) =>
+			lowered.includes(recipe.title.toLowerCase().split(" ")[0])
+		);
 		const targetRecipe = matchedRecipe ?? recipes[0];
 		handleSelectRecipe(targetRecipe.id, prompt, { trackHistory: true });
 	};
@@ -306,16 +309,22 @@ function App(): ReactElement {
 		trackHistory?: boolean;
 	};
 
-	const handleSelectRecipe = (recipeId: string, userMessage?: string, options?: SelectOptions) => {
-		const nextRecipe = recipes.find((recipe) => recipe.id === recipeId) ?? recipes[0];
+	const handleSelectRecipe = (
+		recipeId: string,
+		userMessage?: string,
+		options?: SelectOptions
+	) => {
+		const nextRecipe =
+			recipes.find((recipe) => recipe.id === recipeId) ?? recipes[0];
 		setSelectedRecipeId(nextRecipe.id);
 		setViewMode("active");
 		setHoveredIngredientId(null);
-		syncConversation(userMessage, nextRecipe);
 		const trimmedMessage = userMessage?.trim();
 		if (trimmedMessage && options?.trackHistory) {
 			setHistory((prev) => {
-				const remaining = prev.filter((entry) => entry.recipeId !== nextRecipe.id);
+				const remaining = prev.filter(
+					(entry) => entry.recipeId !== nextRecipe.id
+				);
 				const newEntry: ListEntry = {
 					id: makeId("hist"),
 					recipeId: nextRecipe.id,
@@ -347,9 +356,13 @@ function App(): ReactElement {
 			selectedRecipe.title,
 			selectedRecipe.summary,
 			"Ingredients:",
-			...selectedRecipe.ingredients.map((ingredient) => `- ${ingredient.amount} ${ingredient.label}`),
+			...selectedRecipe.ingredients.map(
+				(ingredient) => `- ${ingredient.amount} ${ingredient.label}`
+			),
 			"Steps:",
-			...selectedRecipe.steps.map((step, index) => `${index + 1}. ${step.label}`),
+			...selectedRecipe.steps.map(
+				(step, index) => `${index + 1}. ${step.label}`
+			),
 		].join("\n");
 		try {
 			await navigator.clipboard.writeText(compiled);
@@ -364,7 +377,9 @@ function App(): ReactElement {
 		window.setTimeout(() => {
 			setIsSaving(false);
 			setFavorites((prev) => {
-				const alreadySaved = prev.some((entry) => entry.recipeId === selectedRecipe.id);
+				const alreadySaved = prev.some(
+					(entry) => entry.recipeId === selectedRecipe.id
+				);
 				if (alreadySaved) {
 					showToast("Already in favorites");
 					return prev;
@@ -388,19 +403,7 @@ function App(): ReactElement {
 		setViewMode("idle");
 		setHoveredIngredientId(null);
 		setCurrentStepIndex(0);
-		setConversation([]);
-	};
-
-	const generateAssistantReply = (question: string, plan: RecipePlan): string => {
-		const lower = question.toLowerCase();
-		if (lower.includes("recommend") || lower.includes("suggest")) {
-			const alternative = recipes.find((recipe) => recipe.id !== plan.id) ?? plan;
-			return `I recommend trying ${alternative.title} next. It brings ${alternative.tags.slice(0, 2).join(" and ")} to the table.`;
-		}
-		if (lower.includes("time") || lower.includes("long")) {
-			return `${plan.title} wraps in ${plan.readyIn}. Let me know if you want a faster option.`;
-		}
-		return `For ${plan.title}, focus on ${plan.steps[0].label.toLowerCase()} to start. I can suggest swaps if you need them.`;
+		clearConversation();
 	};
 
 	const handleChatSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -408,9 +411,10 @@ function App(): ReactElement {
 		if (!chatInput.trim()) {
 			return;
 		}
-		const reply = generateAssistantReply(chatInput, selectedRecipe);
-		syncConversation(chatInput, selectedRecipe, reply);
-		setChatInput("");
+		const didSend = sendUserMessage(chatInput);
+		if (didSend) {
+			setChatInput("");
+		}
 	};
 
 	const goToStep = (delta: number) => {
@@ -449,13 +453,26 @@ function App(): ReactElement {
 					</div>
 					{isAccountMenuOpen && (
 						<div className="account-dropdown" role="menu">
-							<button type="button" onClick={() => handleAccountAction("profile")} role="menuitem">
+							<button
+								type="button"
+								onClick={() => handleAccountAction("profile")}
+								role="menuitem"
+							>
 								Profile
 							</button>
-							<button type="button" onClick={() => handleAccountAction("settings")} role="menuitem">
+							<button
+								type="button"
+								onClick={() => handleAccountAction("settings")}
+								role="menuitem"
+							>
 								Account settings
 							</button>
-							<button type="button" onClick={() => handleAccountAction("logout")} role="menuitem" className="danger">
+							<button
+								type="button"
+								onClick={() => handleAccountAction("logout")}
+								role="menuitem"
+								className="danger"
+							>
 								Log out
 							</button>
 						</div>
@@ -487,14 +504,24 @@ function App(): ReactElement {
 				</header>
 				<ul className="story-list">
 					{listEntries.length === 0 ? (
-						<li className="empty-state">Start a conversation to populate this list.</li>
+						<li className="empty-state">
+							Start a conversation to populate this list.
+						</li>
 					) : (
 						listEntries.map((entry) => (
 							<li key={entry.id}>
 								<button
 									type="button"
-									className={`story-card ${selectedRecipeId === entry.recipeId ? "is-selected" : ""}`}
-									onClick={() => handleSelectRecipe(entry.recipeId, `Can we revisit ${entry.title}?`, { trackHistory: false })}
+									className={`story-card ${
+										selectedRecipeId === entry.recipeId ? "is-selected" : ""
+									}`}
+									onClick={() =>
+										handleSelectRecipe(
+											entry.recipeId,
+											`Can we revisit ${entry.title}?`,
+											{ trackHistory: false }
+										)
+									}
 								>
 									<div className="story-title-row">
 										<span>{entry.title}</span>
@@ -518,7 +545,8 @@ function App(): ReactElement {
 						<p className="eyebrow">Recipe chatbot</p>
 						<h1>What would you like to make today?</h1>
 						<p className="lede">
-							Describe cravings, pantry finds, or dietary vibes and I will draft recipes, timing, and a step plan.
+							Describe cravings, pantry finds, or dietary vibes and I will draft
+							recipes, timing, and a step plan.
 						</p>
 						<form className="prompt-form" onSubmit={handlePromptSubmit}>
 							<input
@@ -536,7 +564,9 @@ function App(): ReactElement {
 									type="button"
 									onClick={() => {
 										setPrompt(suggestion);
-										handleSelectRecipe(recipes[0].id, suggestion, { trackHistory: true });
+										handleSelectRecipe(recipes[0].id, suggestion, {
+											trackHistory: true,
+										});
 									}}
 								>
 									{suggestion}
@@ -552,11 +582,19 @@ function App(): ReactElement {
 								<h1>{selectedRecipe.title}</h1>
 								<p className="lede">{selectedRecipe.summary}</p>
 							</div>
-							<div className="action-toolbar" role="toolbar" aria-label="recipe actions">
+							<div
+								className="action-toolbar"
+								role="toolbar"
+								aria-label="recipe actions"
+							>
 								<button type="button" onClick={handleCopyPlan}>
 									Copy
 								</button>
-								<button type="button" onClick={handleSavePlan} disabled={isSaving}>
+								<button
+									type="button"
+									onClick={handleSavePlan}
+									disabled={isSaving}
+								>
 									{isSaving ? "Saving…" : "Save"}
 								</button>
 								<button type="button" className="ghost" onClick={handleReset}>
@@ -580,12 +618,14 @@ function App(): ReactElement {
 									{selectedRecipe.ingredients.map((ingredient) => {
 										const isHovered = hoveredIngredientId === ingredient.id;
 										const ingredientSteps = ingredient.futureSteps
-												.map((stepIndex) => selectedRecipe.steps[stepIndex])
-												.filter((step): step is Step => Boolean(step));
+											.map((stepIndex) => selectedRecipe.steps[stepIndex])
+											.filter((step): step is Step => Boolean(step));
 										return (
 											<li
 												key={ingredient.id}
-												onMouseEnter={() => setHoveredIngredientId(ingredient.id)}
+												onMouseEnter={() =>
+													setHoveredIngredientId(ingredient.id)
+												}
 												onMouseLeave={() => setHoveredIngredientId(null)}
 												className={isHovered ? "is-hovered" : undefined}
 											>
@@ -596,7 +636,11 @@ function App(): ReactElement {
 													</div>
 													<small>{ingredient.note}</small>
 												</div>
-												<div className={`ingredient-detail ${isHovered ? "is-visible" : ""}`}>
+												<div
+													className={`ingredient-detail ${
+														isHovered ? "is-visible" : ""
+													}`}
+												>
 													<p className="eyebrow">Steps queued</p>
 													{ingredientSteps.length ? (
 														<ol>
@@ -605,7 +649,9 @@ function App(): ReactElement {
 															))}
 														</ol>
 													) : (
-														<p className="muted">No specific steps queued just yet.</p>
+														<p className="muted">
+															No specific steps queued just yet.
+														</p>
 													)}
 												</div>
 											</li>
@@ -623,8 +669,16 @@ function App(): ReactElement {
 										<button
 											key={recipe.id}
 											type="button"
-											className={recipe.id === selectedRecipeId ? "is-active" : undefined}
-											onClick={() => handleSelectRecipe(recipe.id, `Switch to ${recipe.title}`, { trackHistory: false })}
+											className={
+												recipe.id === selectedRecipeId ? "is-active" : undefined
+											}
+											onClick={() =>
+												handleSelectRecipe(
+													recipe.id,
+													`Switch to ${recipe.title}`,
+													{ trackHistory: false }
+												)
+											}
 										>
 											<p className="eyebrow">{recipe.readyIn}</p>
 											<h4>{recipe.title}</h4>
@@ -642,7 +696,11 @@ function App(): ReactElement {
 					<header>
 						<p className="eyebrow">Step tracker</p>
 						<div className="tracker-controls">
-							<button type="button" onClick={() => goToStep(-1)} disabled={currentStepIndex === 0}>
+							<button
+								type="button"
+								onClick={() => goToStep(-1)}
+								disabled={currentStepIndex === 0}
+							>
 								Prev
 							</button>
 							<span>
@@ -659,14 +717,21 @@ function App(): ReactElement {
 					</header>
 					<ol className="step-list">
 						{selectedRecipe.steps.map((step, index) => {
-							const state = index === currentStepIndex ? "is-active" : index > currentStepIndex ? "is-upcoming" : "is-complete";
+							const state =
+								index === currentStepIndex
+									? "is-active"
+									: index > currentStepIndex
+									? "is-upcoming"
+									: "is-complete";
 							return (
 								<li key={step.id} className={state}>
 									<div className="step-index">{index + 1}</div>
 									<div>
 										<p>{step.label}</p>
 										{step.tip && <small>{step.tip}</small>}
-										{step.duration && <span className="duration">{step.duration}</span>}
+										{step.duration && (
+											<span className="duration">{step.duration}</span>
+										)}
 									</div>
 								</li>
 							);
@@ -674,35 +739,15 @@ function App(): ReactElement {
 					</ol>
 				</section>
 			)}
-			<section className="panel chat-panel">
-				<header>
-					<p className="eyebrow">Chat</p>
-					<h3>Questions & recommendations</h3>
-				</header>
-				<div className="conversation-box">
-					{conversation.length ? (
-						<ol className="conversation-feed">
-							{conversation.map((entry) => (
-								<li key={entry.id} className={`chat-row ${entry.role}`} data-role={entry.role}>
-									<span>{entry.role === "user" ? "You" : "Chef"}</span>
-									<p>{entry.content}</p>
-								</li>
-							))}
-						</ol>
-					) : (
-						<p className="muted">Ask anything about pantry finds or get a suggestion.</p>
-					)}
-				</div>
-				<form className="chat-form" onSubmit={handleChatSubmit}>
-					<input
-						type="text"
-						placeholder="Ask for a recommendation or cooking tip"
-						value={chatInput}
-						onChange={(event) => setChatInput(event.target.value)}
-					/>
-					<button type="submit">Send</button>
-				</form>
-			</section>
+			<ChatSidebar
+				conversation={conversation}
+				chatInput={chatInput}
+				onChatInputChange={setChatInput}
+				onSubmit={handleChatSubmit}
+				connectionStatus={chatStatus}
+				roomId={roomId}
+				onReconnect={reconnectChat}
+			/>
 			{toast && <div className="toast">{toast}</div>}
 		</div>
 	);
