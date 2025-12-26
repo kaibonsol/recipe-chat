@@ -1,68 +1,83 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=Source+Sans+3:wght@400;500;600&display=swap");
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: "Space Grotesk", "Source Sans 3", -apple-system, BlinkMacSystemFont, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  color: #ffe9f2;
+  background-color: #ffd8e8;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  --bg-surface: #ffecf5;
+  --bg-panel: rgba(255, 230, 244, 0.92);
+  --bg-panel-soft: rgba(255, 255, 255, 0.35);
+  --stroke: rgba(249, 141, 191, 0.35);
+  --accent: #ff7fbf;
+  --accent-soft: rgba(255, 127, 191, 0.2);
+  --text-primary: #482238;
+  --text-muted: rgba(72, 34, 56, 0.65);
+  --card-radius: 22px;
+  --shadow-soft: 0 30px 60px rgba(255, 119, 179, 0.25);
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+* {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
   min-height: 100vh;
+  background: radial-gradient(circle at 20% 0%, rgba(255, 191, 224, 0.8), transparent 55%),
+    linear-gradient(150deg, #ffd8e8 0%, #ffc8e2 45%, #ffb3d6 100%);
+  color: var(--text-primary);
+  display: block;
+  padding: clamp(1rem, 2vw, 2rem);
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+#root {
+  width: 100%;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "Space Grotesk", sans-serif;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+p {
+  margin: 0;
 }
 
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  font-weight: 600;
+  border: 1px solid transparent;
+  background: var(--accent);
+  color: #050505;
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+  box-shadow: 0 12px 24px rgba(254, 145, 67, 0.25);
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid rgba(254, 145, 67, 0.55);
+  outline-offset: 2px;
+}
+
+input {
+  font-family: inherit;
 }
